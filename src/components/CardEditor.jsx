@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ImagePlus, Trash2, Save, Plus, Folder, ChevronLeft, Play, LayoutGrid, Download, Upload } from 'lucide-react';
+import { ImagePlus, Trash2, Edit2, Save, Plus, Folder, ChevronLeft, Play, LayoutGrid, Download, Upload } from 'lucide-react';
 import { get, set } from 'idb-keyval';
 
 export default function CardEditor({ onStudyDeck }) {
@@ -105,6 +105,15 @@ export default function CardEditor({ onStudyDeck }) {
   const handleDeleteCard = async (id) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa thẻ này?')) {
       const updatedCards = cards.filter(c => c.id !== id);
+      await set('microcards', updatedCards);
+      setCards(updatedCards);
+    }
+  };
+
+  const handleEditCard = async (id, oldAnswer) => {
+    const newAnswer = window.prompt('Sửa đáp án:', oldAnswer);
+    if (newAnswer !== null && newAnswer.trim() !== '') {
+      const updatedCards = cards.map(c => c.id === id ? { ...c, answer: newAnswer.trim().toLowerCase() } : c);
       await set('microcards', updatedCards);
       setCards(updatedCards);
     }
@@ -366,13 +375,22 @@ export default function CardEditor({ onStudyDeck }) {
                     <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Sai: {card.stats.wrong}</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDeleteCard(card.id)}
-                  className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur-sm text-red-500 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all shadow-sm"
-                  title="Xóa thẻ"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-all">
+                  <button
+                    onClick={() => handleEditCard(card.id, card.answer)}
+                    className="p-2 bg-white/80 backdrop-blur-sm text-indigo-500 rounded-full hover:bg-indigo-50 shadow-sm"
+                    title="Sửa đáp án"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCard(card.id)}
+                    className="p-2 bg-white/80 backdrop-blur-sm text-red-500 rounded-full hover:bg-red-50 shadow-sm"
+                    title="Xóa thẻ"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

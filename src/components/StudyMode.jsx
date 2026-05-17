@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, CheckCircle2, XCircle, RotateCcw, Folder, Play, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowRight, CheckCircle2, XCircle, RotateCcw, Folder, Play, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react';
 import { get, set } from 'idb-keyval';
 
 const normalizeString = (str) => {
@@ -116,6 +116,18 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
     setAllCards(updatedAllCards); 
     setHasChecked(true);
     setIsFlipped(true);
+  };
+
+  const handleEditAnswer = async () => {
+    const currentCard = cards[currentIndex];
+    const newAnswer = window.prompt('Sửa đáp án cho ảnh này:', currentCard.answer);
+    if (newAnswer !== null && newAnswer.trim() !== '') {
+      const updatedAllCards = allCards.map(c => 
+        c.id === currentCard.id ? { ...c, answer: newAnswer.trim().toLowerCase() } : c
+      );
+      await set('microcards', updatedAllCards);
+      setAllCards(updatedAllCards);
+    }
   };
 
   const handleNext = async () => {
@@ -352,10 +364,22 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
 
         {!isPerfect && (
           <div>
-            <p className="text-sm font-medium text-slate-500 mb-1">Đáp án đúng:</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-sm font-medium text-slate-500">Đáp án đúng:</p>
+              <button onClick={handleEditAnswer} type="button" className="text-indigo-500 hover:text-indigo-700 flex items-center text-xs font-semibold">
+                <Edit2 className="w-3 h-3 mr-1" /> Sửa đáp án
+              </button>
+            </div>
             <p className="font-mono text-xl tracking-wide text-green-600 font-bold break-words bg-white/50 p-2 rounded inline-block">
               {currentCard.answer}
             </p>
+          </div>
+        )}
+        {isPerfect && (
+          <div className="mt-4 flex justify-end">
+             <button onClick={handleEditAnswer} type="button" className="text-indigo-500 hover:text-indigo-700 flex items-center text-xs font-semibold bg-white px-2 py-1 rounded shadow-sm border border-indigo-100">
+                <Edit2 className="w-3 h-3 mr-1" /> Sửa đáp án thẻ này
+             </button>
           </div>
         )}
       </motion.div>
