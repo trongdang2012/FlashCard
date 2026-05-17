@@ -25,10 +25,10 @@ function App() {
         console.log('Migrating data from localStorage to IndexedDB...');
         const lsDecks = JSON.parse(lsDecksStr || '[]');
         const lsCards = JSON.parse(lsCardsStr || '[]');
-        
+
         await set('microdecks', lsDecks);
         await set('microcards', lsCards);
-        
+
         idbDecks = lsDecks;
         idbCards = lsCards;
       }
@@ -78,55 +78,52 @@ function App() {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-600">MicroCard</span>
+                <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-600">FlashCard</span>
               </div>
               <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                 <button
                   onClick={() => { setActiveTab('editor'); setStudyFilter(null); setStudyDeckId(null); }}
-                  className={`${
-                    activeTab === 'editor'
+                  className={`${activeTab === 'editor'
                       ? 'border-indigo-500 text-indigo-600'
                       : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
-                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
                 >
                   <Edit className="w-4 h-4 mr-2" />
                   Quản lý thẻ
                 </button>
                 <button
                   onClick={() => { setActiveTab('study'); setStudyFilter(null); setStudyDeckId(null); }}
-                  className={`${
-                    activeTab === 'study'
+                  className={`${activeTab === 'study'
                       ? 'border-indigo-500 text-indigo-600'
                       : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
-                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
                 >
                   <BookOpen className="w-4 h-4 mr-2" />
                   Học bài
                 </button>
                 <button
                   onClick={() => { setActiveTab('dashboard'); setStudyFilter(null); setStudyDeckId(null); }}
-                  className={`${
-                    activeTab === 'dashboard'
+                  className={`${activeTab === 'dashboard'
                       ? 'border-indigo-500 text-indigo-600'
                       : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
-                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
+                    } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors duration-200`}
                 >
                   <LayoutDashboard className="w-4 h-4 mr-2" />
                   Thống kê
                 </button>
               </div>
             </div>
-            
+
             <div className="flex items-center sm:hidden space-x-4">
-               <button onClick={() => { setActiveTab('editor'); setStudyFilter(null); setStudyDeckId(null); }} className={`p-2 rounded-md ${activeTab === 'editor' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-500'}`}>
-                 <Edit className="w-5 h-5" />
-               </button>
-               <button onClick={() => { setActiveTab('study'); setStudyFilter(null); setStudyDeckId(null); }} className={`p-2 rounded-md ${activeTab === 'study' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-500'}`}>
-                 <BookOpen className="w-5 h-5" />
-               </button>
-               <button onClick={() => { setActiveTab('dashboard'); setStudyFilter(null); setStudyDeckId(null); }} className={`p-2 rounded-md ${activeTab === 'dashboard' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-500'}`}>
-                 <LayoutDashboard className="w-5 h-5" />
-               </button>
+              <button onClick={() => { setActiveTab('editor'); setStudyFilter(null); setStudyDeckId(null); }} className={`p-2 rounded-md ${activeTab === 'editor' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-500'}`}>
+                <Edit className="w-5 h-5" />
+              </button>
+              <button onClick={() => { setActiveTab('study'); setStudyFilter(null); setStudyDeckId(null); }} className={`p-2 rounded-md ${activeTab === 'study' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-500'}`}>
+                <BookOpen className="w-5 h-5" />
+              </button>
+              <button onClick={() => { setActiveTab('dashboard'); setStudyFilter(null); setStudyDeckId(null); }} className={`p-2 rounded-md ${activeTab === 'dashboard' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-500'}`}>
+                <LayoutDashboard className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </div>

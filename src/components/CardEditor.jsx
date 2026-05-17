@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ImagePlus, Trash2, Edit2, Save, Plus, Folder, ChevronLeft, Play, LayoutGrid, Download, Upload } from 'lucide-react';
 import { get, set } from 'idb-keyval';
+import { useDialog } from './DialogContext';
 
 export default function CardEditor({ onStudyDeck }) {
+  const { alert, confirm, prompt } = useDialog();
   const [decks, setDecks] = useState([]);
   const [cards, setCards] = useState([]);
   const [selectedDeckId, setSelectedDeckId] = useState(null);
@@ -21,7 +23,7 @@ export default function CardEditor({ onStudyDeck }) {
   }, []);
 
   const handleCreateDeck = async () => {
-    const name = prompt('Nhập tên bộ thẻ mới:');
+    const name = await prompt('Nhập tên bộ thẻ mới:');
     if (name && name.trim()) {
       const newDeck = { id: Date.now().toString(), name: name.trim(), lastStudiedIndex: 0, isCompleted: false };
       const updatedDecks = [...decks, newDeck];
@@ -31,7 +33,7 @@ export default function CardEditor({ onStudyDeck }) {
   };
 
   const handleDeleteDeck = async (id) => {
-    if (window.confirm('Bạn có chắc muốn xóa bộ thẻ này và toàn bộ thẻ bên trong?')) {
+    if (await confirm('Bạn có chắc muốn xóa bộ thẻ này và toàn bộ thẻ bên trong?')) {
       const updatedDecks = decks.filter(d => d.id !== id);
       const updatedCards = cards.filter(c => c.deckId !== id);
       await set('microdecks', updatedDecks);
@@ -79,7 +81,7 @@ export default function CardEditor({ onStudyDeck }) {
   const saveBulkCards = async () => {
     const invalidItems = bulkItems.filter(i => !i.answer.trim());
     if (invalidItems.length > 0) {
-      alert('Vui lòng nhập đáp án cho tất cả các ảnh trước khi lưu!');
+      await alert('Vui lòng nhập đáp án cho tất cả các ảnh trước khi lưu!');
       return;
     }
 
@@ -98,12 +100,12 @@ export default function CardEditor({ onStudyDeck }) {
       setBulkItems([]); // Clear draft
     } catch (err) {
       console.error(err);
-      alert('Không thể lưu thẻ: ' + err.message);
+      await alert('Không thể lưu thẻ: ' + err.message);
     }
   };
 
   const handleDeleteCard = async (id) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa thẻ này?')) {
+    if (await confirm('Bạn có chắc chắn muốn xóa thẻ này?')) {
       const updatedCards = cards.filter(c => c.id !== id);
       await set('microcards', updatedCards);
       setCards(updatedCards);
@@ -111,7 +113,7 @@ export default function CardEditor({ onStudyDeck }) {
   };
 
   const handleEditCard = async (id, oldAnswer) => {
-    const newAnswer = window.prompt('Sửa đáp án:', oldAnswer);
+    const newAnswer = await prompt('Sửa đáp án:', oldAnswer);
     if (newAnswer !== null && newAnswer.trim() !== '') {
       const updatedCards = cards.map(c => c.id === id ? { ...c, answer: newAnswer.trim().toLowerCase() } : c);
       await set('microcards', updatedCards);
@@ -130,7 +132,7 @@ export default function CardEditor({ onStudyDeck }) {
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      alert('Có lỗi khi xuất dữ liệu: ' + error.message);
+      await alert('Có lỗi khi xuất dữ liệu: ' + error.message);
     }
   };
 
@@ -143,7 +145,7 @@ export default function CardEditor({ onStudyDeck }) {
       try {
         const data = JSON.parse(event.target.result);
         if (data && Array.isArray(data.decks) && Array.isArray(data.cards)) {
-          if (window.confirm(`Tìm thấy ${data.decks.length} bộ thẻ và ${data.cards.length} thẻ. Bạn có chắc chắn muốn nạp dữ liệu này? (Dữ liệu mới sẽ được gộp vào dữ liệu hiện tại)`)) {
+          if (await confirm(`Tìm thấy ${data.decks.length} bộ thẻ và ${data.cards.length} thẻ. Bạn có chắc chắn muốn nạp dữ liệu này? (Dữ liệu mới sẽ được gộp vào dữ liệu hiện tại)`)) {
             const newDecks = [...decks];
             const newCards = [...cards];
             
@@ -158,13 +160,13 @@ export default function CardEditor({ onStudyDeck }) {
             await set('microcards', newCards);
             setDecks(newDecks);
             setCards(newCards);
-            alert('Nhập dữ liệu thành công!');
+            await alert('Nhập dữ liệu thành công!');
           }
         } else {
-          alert('File không hợp lệ hoặc bị hỏng.');
+          await alert('File không hợp lệ hoặc bị hỏng.');
         }
       } catch (error) {
-        alert('Lỗi đọc file: ' + error.message);
+        await alert('Lỗi đọc file: ' + error.message);
       }
     };
     reader.readAsText(file);

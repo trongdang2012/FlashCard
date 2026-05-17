@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, CheckCircle2, XCircle, RotateCcw, Folder, Play, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react';
 import { get, set } from 'idb-keyval';
+import { useDialog } from './DialogContext';
 
 const normalizeString = (str) => {
   if (!str) return '';
@@ -14,6 +15,7 @@ const normalizeString = (str) => {
 };
 
 export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard }) {
+  const { prompt } = useDialog();
   const [decks, setDecks] = useState([]);
   const [allCards, setAllCards] = useState([]);
   const [selectedDeckId, setSelectedDeckId] = useState(initialDeckId);
@@ -120,7 +122,7 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
 
   const handleEditAnswer = async () => {
     const currentCard = cards[currentIndex];
-    const newAnswer = window.prompt('Sửa đáp án cho ảnh này:', currentCard.answer);
+    const newAnswer = await prompt('Sửa đáp án cho ảnh này:', currentCard.answer);
     if (newAnswer !== null && newAnswer.trim() !== '') {
       const updatedAllCards = allCards.map(c => 
         c.id === currentCard.id ? { ...c, answer: newAnswer.trim().toLowerCase() } : c
