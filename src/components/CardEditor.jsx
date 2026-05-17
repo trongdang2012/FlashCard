@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ImagePlus, Trash2, Save, Plus, Folder, ChevronLeft, Play, LayoutGrid } from 'lucide-react';
+import { ImagePlus, Trash2, Save, Plus, Folder, ChevronLeft, Play, LayoutGrid, Download, Upload } from 'lucide-react';
 import { get, set } from 'idb-keyval';
 
 export default function CardEditor({ onStudyDeck }) {
@@ -110,22 +110,89 @@ export default function CardEditor({ onStudyDeck }) {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const exportData = { decks, cards };
+      const blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `microcard_backup_${new Date().getTime()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      alert('Có lỗi khi xuất dữ liệu: ' + error.message);
+    }
+  };
+
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (data && Array.isArray(data.decks) && Array.isArray(data.cards)) {
+          if (window.confirm(`Tìm thấy ${data.decks.length} bộ thẻ và ${data.cards.length} thẻ. Bạn có chắc chắn muốn nạp dữ liệu này? (Dữ liệu mới sẽ được gộp vào dữ liệu hiện tại)`)) {
+            const newDecks = [...decks];
+            const newCards = [...cards];
+            
+            data.decks.forEach(d => {
+              if (!newDecks.find(existing => existing.id === d.id)) newDecks.push(d);
+            });
+            data.cards.forEach(c => {
+              if (!newCards.find(existing => existing.id === c.id)) newCards.push(c);
+            });
+
+            await set('microdecks', newDecks);
+            await set('microcards', newCards);
+            setDecks(newDecks);
+            setCards(newCards);
+            alert('Nhập dữ liệu thành công!');
+          }
+        } else {
+          alert('File không hợp lệ hoặc bị hỏng.');
+        }
+      } catch (error) {
+        alert('Lỗi đọc file: ' + error.message);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
   // View: Deck List
   if (!selectedDeckId) {
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <h2 className="text-2xl font-bold text-slate-800 flex items-center">
             <LayoutGrid className="w-6 h-6 mr-3 text-indigo-500" />
             Quản lý Bộ thẻ
           </h2>
-          <button
-            onClick={handleCreateDeck}
-            className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
-          >
-            <Plus className="w-5 h-5 mr-1" />
-            Tạo bộ mới
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <label className="inline-flex items-center rounded-lg bg-white border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors cursor-pointer">
+              <Upload className="w-4 h-4 mr-2" />
+              Nhập
+              <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+            </label>
+            <button
+              onClick={handleExport}
+              disabled={decks.length === 0}
+              className="inline-flex items-center rounded-lg bg-white border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Xuất
+            </button>
+            <button
+              onClick={handleCreateDeck}
+              className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
+            >
+              <Plus className="w-5 h-5 mr-1" />
+              Tạo bộ mới
+            </button>
+          </div>
         </div>
 
         {decks.length === 0 ? (
