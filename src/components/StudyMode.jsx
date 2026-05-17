@@ -25,10 +25,24 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
       setDecks(savedDecks);
       setAllCards(savedCards);
       
-      if (initialDeckId) {
+      if (filterCards === 'wrong') {
+        const wrongCards = savedCards.filter(c => c.stats.wrong > 0);
+        setCurrentIndex(0);
+        setIsFinished(wrongCards.length === 0);
+      } else if (initialDeckId) {
+        const deck = savedDecks.find(d => d.id === initialDeckId);
+        const count = savedCards.filter(c => c.deckId === initialDeckId).length;
+        const savedIndex = deck?.lastStudiedIndex || 0;
+        setCurrentIndex(savedIndex >= count ? 0 : savedIndex);
         setSelectedDeckId(initialDeckId);
+        setIsFinished(count === 0);
       } else if (savedDecks.length === 1 && !filterCards) {
-        setSelectedDeckId(savedDecks[0].id);
+        const deck = savedDecks[0];
+        const count = savedCards.filter(c => c.deckId === deck.id).length;
+        const savedIndex = deck?.lastStudiedIndex || 0;
+        setCurrentIndex(savedIndex >= count ? 0 : savedIndex);
+        setSelectedDeckId(deck.id);
+        setIsFinished(count === 0);
       }
     };
     loadData();
@@ -38,23 +52,11 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
     if (filterCards === 'wrong') {
       const wrongCards = allCards.filter(c => c.stats.wrong > 0).sort((a, b) => b.stats.wrong - a.stats.wrong);
       setCards(wrongCards);
-      setCurrentIndex(0);
-      setIsFinished(wrongCards.length === 0);
     } else if (selectedDeckId) {
       const deckCards = allCards.filter(c => c.deckId === selectedDeckId);
-      const deck = decks.find(d => d.id === selectedDeckId);
-      const savedIndex = deck?.lastStudiedIndex || 0;
-      
       setCards(deckCards);
-      if (savedIndex >= deckCards.length) {
-        setCurrentIndex(0);
-        setIsFinished(deckCards.length === 0);
-      } else {
-        setCurrentIndex(savedIndex);
-        setIsFinished(false);
-      }
     }
-  }, [selectedDeckId, filterCards, allCards, decks]);
+  }, [selectedDeckId, filterCards, allCards]);
 
   useEffect(() => {
     const saveProgress = async () => {
@@ -180,7 +182,12 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
                   )}
 
                   <button
-                    onClick={() => setSelectedDeckId(deck.id)}
+                    onClick={() => {
+                      const savedIndex = deck.lastStudiedIndex || 0;
+                      setCurrentIndex(savedIndex >= count ? 0 : savedIndex);
+                      setIsFinished(count === 0);
+                      setSelectedDeckId(deck.id);
+                    }}
                     disabled={count === 0}
                     className="w-full flex items-center justify-center bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
