@@ -3,6 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, CheckCircle2, XCircle, RotateCcw, Folder, Play, ChevronLeft, ChevronRight } from 'lucide-react';
 import { get, set } from 'idb-keyval';
 
+const normalizeString = (str) => {
+  if (!str) return '';
+  return str
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(/[.,/#!$%^&*;:{}=\-_`~()\[\]]/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+};
+
 export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard }) {
   const [decks, setDecks] = useState([]);
   const [allCards, setAllCards] = useState([]);
@@ -78,8 +88,8 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
     if (!userInput.trim() || hasChecked) return;
 
     const currentCard = cards[currentIndex];
-    const userAns = userInput.toLowerCase().trim();
-    const correctAns = currentCard.answer;
+    const userAns = normalizeString(userInput);
+    const correctAns = normalizeString(currentCard.answer);
     const isExactMatch = userAns === correctAns;
 
     // Update Session Results (only record the first check per card in a session)
@@ -288,8 +298,8 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
   const renderSpellCheck = () => {
     if (!hasChecked) return null;
     
-    const correctAns = currentCard.answer;
-    const userAns = userInput.toLowerCase().trim();
+    const correctAns = normalizeString(currentCard.answer);
+    const userAns = normalizeString(userInput);
     
     const maxLength = Math.max(correctAns.length, userAns.length);
     let resultHTML = [];
@@ -344,7 +354,7 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
           <div>
             <p className="text-sm font-medium text-slate-500 mb-1">Đáp án đúng:</p>
             <p className="font-mono text-xl tracking-wide text-green-600 font-bold break-words bg-white/50 p-2 rounded inline-block">
-              {correctAns}
+              {currentCard.answer}
             </p>
           </div>
         )}
