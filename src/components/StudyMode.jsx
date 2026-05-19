@@ -456,11 +456,17 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
           {/* Front of Card */}
           <div className="absolute w-full h-full backface-hidden bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden flex flex-col">
             <div className="flex-1 bg-slate-100 relative p-4 flex items-center justify-center overflow-hidden">
-              <img 
-                src={currentCard.image} 
-                alt="Flashcard" 
-                className="w-full h-full object-contain rounded-md shadow-sm border border-slate-200/50"
-              />
+              {currentCard.image ? (
+                <img 
+                  src={currentCard.image} 
+                  alt="Flashcard" 
+                  className="w-full h-full object-contain rounded-md shadow-sm border border-slate-200/50"
+                />
+              ) : (
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 text-center px-4">
+                  {currentCard.question}
+                </h2>
+              )}
             </div>
           </div>
 

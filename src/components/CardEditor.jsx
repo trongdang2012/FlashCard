@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ImagePlus, Trash2, Edit2, Save, Plus, Folder, ChevronLeft, Play, LayoutGrid, Download, Upload } from 'lucide-react';
+import { ImagePlus, Trash2, Edit2, Save, Plus, Folder, ChevronLeft, Play, LayoutGrid, Download, Upload, Type } from 'lucide-react';
 import { get, set } from 'idb-keyval';
 import { useDialog } from './DialogContext';
 
@@ -11,6 +11,10 @@ export default function CardEditor({ onStudyDeck }) {
   
   // Bulk upload state
   const [bulkItems, setBulkItems] = useState([]);
+
+  // Text card state
+  const [textQuestion, setTextQuestion] = useState('');
+  const [textAnswer, setTextAnswer] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -72,6 +76,32 @@ export default function CardEditor({ onStudyDeck }) {
 
   const handleBulkAnswerChange = (id, newAnswer) => {
     setBulkItems(prev => prev.map(item => item.id === id ? { ...item, answer: newAnswer } : item));
+  };
+
+  const handleAddTextCard = async (e) => {
+    e.preventDefault();
+    if (!textQuestion.trim() || !textAnswer.trim()) {
+      await alert('Vui lòng nhập cả câu hỏi và đáp án!');
+      return;
+    }
+    const newCard = {
+      id: Date.now().toString() + Math.random(),
+      deckId: selectedDeckId,
+      image: null,
+      question: textQuestion.trim(),
+      answer: textAnswer.trim().toLowerCase(),
+      stats: { correct: 0, wrong: 0 }
+    };
+    const updatedCards = [...cards, newCard];
+    try {
+      await set('microcards', updatedCards);
+      setCards(updatedCards);
+      setTextQuestion('');
+      setTextAnswer('');
+    } catch (err) {
+      console.error(err);
+      await alert('Không thể lưu thẻ: ' + err.message);
+    }
   };
 
   const removeBulkItem = (id) => {
@@ -290,23 +320,59 @@ export default function CardEditor({ onStudyDeck }) {
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 md:p-8">
         <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center">
-          <ImagePlus className="w-5 h-5 mr-2 text-indigo-500" />
-          Thêm thẻ mới (Hỗ trợ thêm nhiều ảnh cùng lúc)
+          <Plus className="w-5 h-5 mr-2 text-indigo-500" />
+          Thêm thẻ mới
         </h3>
         
-        <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:bg-slate-50 hover:border-indigo-400 transition-colors relative cursor-pointer group">
-          <input 
-            type="file" 
-            multiple 
-            accept="image/*"
-            onChange={handleBulkImageUpload}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-            title="Chọn nhiều ảnh cùng lúc"
-          />
-          <div className="flex flex-col items-center justify-center pointer-events-none">
-             <ImagePlus className="w-12 h-12 text-slate-300 group-hover:text-indigo-400 transition-colors mb-4" />
-             <p className="text-slate-700 font-semibold mb-1">Click hoặc Kéo thả nhiều ảnh vào đây</p>
-             <p className="text-slate-500 text-sm">Giữ nguyên 100% chất lượng gốc. Không giới hạn dung lượng lưu trữ.</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <form onSubmit={handleAddTextCard} className="border border-slate-200 rounded-xl p-6 bg-slate-50 flex flex-col">
+            <h4 className="font-semibold text-slate-700 mb-4 flex items-center">
+              <Type className="w-4 h-4 mr-2 text-slate-500" /> Thêm thẻ văn bản
+            </h4>
+            <div className="space-y-4 flex-1">
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">Mặt trước (Câu hỏi / Từ vựng)</label>
+                <input 
+                  type="text" 
+                  value={textQuestion}
+                  onChange={e => setTextQuestion(e.target.value)}
+                  className="w-full text-sm border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                  placeholder="Nhập nội dung..."
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">Mặt sau (Đáp án)</label>
+                <input 
+                  type="text" 
+                  value={textAnswer}
+                  onChange={e => setTextAnswer(e.target.value)}
+                  className="w-full text-sm border border-slate-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                  placeholder="Nhập đáp án chính xác..."
+                />
+              </div>
+            </div>
+            <button 
+              type="submit"
+              className="mt-4 w-full inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-colors shadow-sm"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Thêm thẻ
+            </button>
+          </form>
+
+          <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center hover:bg-slate-50 hover:border-indigo-400 transition-colors relative cursor-pointer group flex flex-col items-center justify-center min-h-[240px]">
+            <input 
+              type="file" 
+              multiple 
+              accept="image/*"
+              onChange={handleBulkImageUpload}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+              title="Chọn nhiều ảnh cùng lúc"
+            />
+            <div className="flex flex-col items-center justify-center pointer-events-none">
+               <ImagePlus className="w-10 h-10 text-slate-300 group-hover:text-indigo-400 transition-colors mb-3" />
+               <p className="text-slate-700 font-semibold mb-1">Click / Kéo thả nhiều ảnh</p>
+               <p className="text-slate-500 text-xs px-4">Giữ nguyên 100% chất lượng gốc.<br/>Không giới hạn dung lượng.</p>
+            </div>
           </div>
         </div>
 
@@ -364,9 +430,12 @@ export default function CardEditor({ onStudyDeck }) {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {deckCards.map((card) => (
               <div key={card.id} className="group relative bg-white rounded-xl shadow-sm ring-1 ring-slate-200 overflow-hidden hover:shadow-md transition-all">
-                <div className="aspect-w-4 aspect-h-3 w-full bg-slate-100 h-40 flex items-center justify-center p-2">
-                  {/* Sửa lại object-cover thành object-contain */}
-                  <img src={card.image} alt="Microscopic" className="object-contain w-full h-full" />
+                <div className="aspect-w-4 aspect-h-3 w-full bg-slate-100 h-40 flex items-center justify-center p-2 text-center">
+                  {card.image ? (
+                    <img src={card.image} alt="Flashcard" className="object-contain w-full h-full" />
+                  ) : (
+                    <span className="font-semibold text-slate-700 px-2 line-clamp-4">{card.question}</span>
+                  )}
                 </div>
                 <div className="p-4 border-t border-slate-100">
                   <p className="text-sm font-semibold text-slate-800 truncate" title={card.answer}>
