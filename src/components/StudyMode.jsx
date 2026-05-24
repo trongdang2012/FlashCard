@@ -22,6 +22,8 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
   
   const [cards, setCards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [studyLimit, setStudyLimit] = useState(null);
+  const [studyLimits, setStudyLimits] = useState({});
   const [userInput, setUserInput] = useState('');
   const [isFlipped, setIsFlipped] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
@@ -44,15 +46,13 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
       } else if (initialDeckId) {
         const deck = savedDecks.find(d => d.id === initialDeckId);
         const count = savedCards.filter(c => c.deckId === initialDeckId).length;
-        const savedIndex = deck?.lastStudiedIndex || 0;
-        setCurrentIndex(savedIndex >= count ? 0 : savedIndex);
+        setCurrentIndex(0);
         setSelectedDeckId(initialDeckId);
         setIsFinished(count === 0);
       } else if (savedDecks.length === 1 && !filterCards) {
         const deck = savedDecks[0];
         const count = savedCards.filter(c => c.deckId === deck.id).length;
-        const savedIndex = deck?.lastStudiedIndex || 0;
-        setCurrentIndex(savedIndex >= count ? 0 : savedIndex);
+        setCurrentIndex(0);
         setSelectedDeckId(deck.id);
         setIsFinished(count === 0);
       }
@@ -60,7 +60,7 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
     loadData();
   }, [initialDeckId, filterCards]);
 
-  const orderRef = useRef({ deckId: null, filter: null, order: [] });
+  const orderRef = useRef({ deckId: null, filter: null, order: [], limit: null, totalCount: 0 });
 
   useEffect(() => {
     let currentCards = [];
@@ -76,14 +76,20 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
     if (
       orderRef.current.deckId !== selectedDeckId ||
       orderRef.current.filter !== filterCards ||
-      orderRef.current.order.length !== currentCards.length
+      orderRef.current.totalCount !== currentCards.length ||
+      orderRef.current.limit !== studyLimit
     ) {
       // Reshuffle
-      const shuffled = [...currentCards].sort(() => Math.random() - 0.5);
+      let shuffled = [...currentCards].sort(() => Math.random() - 0.5);
+      if (studyLimit && studyLimit < shuffled.length) {
+        shuffled = shuffled.slice(0, studyLimit);
+      }
       orderRef.current = {
         deckId: selectedDeckId,
         filter: filterCards,
-        order: shuffled.map(c => c.id)
+        order: shuffled.map(c => c.id),
+        limit: studyLimit,
+        totalCount: currentCards.length
       };
       setCards(shuffled);
     } else {
@@ -91,7 +97,7 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
       const orderedCards = orderRef.current.order.map(id => currentCards.find(c => c.id === id)).filter(Boolean);
       setCards(orderedCards);
     }
-  }, [selectedDeckId, filterCards, allCards]);
+  }, [selectedDeckId, filterCards, allCards, studyLimit]);
 
   useEffect(() => {
     const saveProgress = async () => {
@@ -216,22 +222,28 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
                   </div>
                   <p className="text-slate-500 mb-6 flex-1">Số lượng: {count} thẻ</p>
                   
-                  {count > 0 && deck.lastStudiedIndex > 0 && deck.lastStudiedIndex < count && (
-                    <div className="mb-4">
-                      <div className="flex justify-between text-xs text-slate-500 mb-1">
-                        <span>Đang học dở...</span>
-                        <span>{progress}%</span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-1.5">
-                        <div className="bg-indigo-500 h-1.5 rounded-full" style={{ width: `${progress}%` }}></div>
+                  {count > 0 && (
+                    <div className="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                      <label className="text-sm font-semibold text-slate-700 block mb-2">Số câu muốn học:</label>
+                      <div className="flex items-center space-x-2">
+                        <input 
+                          type="number" 
+                          min="1" 
+                          max={count} 
+                          value={studyLimits[deck.id] || count} 
+                          onChange={(e) => setStudyLimits(prev => ({...prev, [deck.id]: e.target.value}))}
+                          className="w-full rounded-lg border border-slate-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2 px-3 outline-none transition-all bg-white"
+                        />
+                        <span className="text-sm text-slate-500 font-medium whitespace-nowrap">/ {count}</span>
                       </div>
                     </div>
                   )}
 
                   <button
                     onClick={() => {
-                      const savedIndex = deck.lastStudiedIndex || 0;
-                      setCurrentIndex(savedIndex >= count ? 0 : savedIndex);
+                      const limit = studyLimits[deck.id] ? parseInt(studyLimits[deck.id], 10) : count;
+                      setCurrentIndex(0);
+                      setStudyLimit(limit);
                       setIsFinished(count === 0);
                       setSelectedDeckId(deck.id);
                     }}
@@ -239,7 +251,7 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
                     className="w-full flex items-center justify-center bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Play className="w-5 h-5 mr-2" />
-                    {count === 0 ? 'Chưa có thẻ' : (deck.lastStudiedIndex > 0 ? 'Học tiếp' : 'Học bộ này')}
+                    {count === 0 ? 'Chưa có thẻ' : 'Bắt đầu học'}
                   </button>
                 </div>
               );
