@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, CheckCircle2, XCircle, RotateCcw, Folder, Play, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react';
 import { get, set } from 'idb-keyval';
@@ -60,13 +60,36 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
     loadData();
   }, [initialDeckId, filterCards]);
 
+  const orderRef = useRef({ deckId: null, filter: null, order: [] });
+
   useEffect(() => {
+    let currentCards = [];
     if (filterCards === 'wrong') {
-      const wrongCards = allCards.filter(c => c.stats.wrong > 0).sort((a, b) => b.stats.wrong - a.stats.wrong);
-      setCards(wrongCards);
+      currentCards = allCards.filter(c => c.stats.wrong > 0);
     } else if (selectedDeckId) {
-      const deckCards = allCards.filter(c => c.deckId === selectedDeckId);
-      setCards(deckCards);
+      currentCards = allCards.filter(c => c.deckId === selectedDeckId);
+    } else {
+      setCards([]);
+      return;
+    }
+
+    if (
+      orderRef.current.deckId !== selectedDeckId ||
+      orderRef.current.filter !== filterCards ||
+      orderRef.current.order.length !== currentCards.length
+    ) {
+      // Reshuffle
+      const shuffled = [...currentCards].sort(() => Math.random() - 0.5);
+      orderRef.current = {
+        deckId: selectedDeckId,
+        filter: filterCards,
+        order: shuffled.map(c => c.id)
+      };
+      setCards(shuffled);
+    } else {
+      // Maintain order
+      const orderedCards = orderRef.current.order.map(id => currentCards.find(c => c.id === id)).filter(Boolean);
+      setCards(orderedCards);
     }
   }, [selectedDeckId, filterCards, allCards]);
 
