@@ -9,6 +9,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('editor'); // 'editor', 'study', 'dashboard'
   const [studyFilter, setStudyFilter] = useState(null); // 'wrong' or null
   const [studyDeckId, setStudyDeckId] = useState(null);
+  const [studyLimit, setStudyLimit] = useState(null);
   const [isReady, setIsReady] = useState(false);
 
   // Migration logic from localStorage to IndexedDB
@@ -48,10 +49,11 @@ function App() {
     setStudyDeckId(null); // Review wrong from ALL decks
   };
 
-  const handleStudyDeck = (deckId) => {
+  const handleStudyDeck = (deckId, limit = null) => {
     setActiveTab('study');
     setStudyFilter(null);
     setStudyDeckId(deckId);
+    setStudyLimit(limit);
   };
 
   const renderContent = () => {
@@ -63,7 +65,7 @@ function App() {
       case 'editor':
         return <CardEditor onStudyDeck={handleStudyDeck} />;
       case 'study':
-        return <StudyMode filterCards={studyFilter} initialDeckId={studyDeckId} onGoToDashboard={() => setActiveTab('dashboard')} />;
+        return <StudyMode filterCards={studyFilter} initialDeckId={studyDeckId} initialLimit={studyLimit} onGoToDashboard={() => setActiveTab('dashboard')} />;
       case 'dashboard':
         return <Dashboard onReviewWrong={handleReviewWrong} />;
       default:

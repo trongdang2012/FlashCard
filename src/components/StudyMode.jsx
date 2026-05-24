@@ -14,7 +14,7 @@ const normalizeString = (str) => {
     .trim();
 };
 
-export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard }) {
+export default function StudyMode({ filterCards, initialDeckId, initialLimit, onGoToDashboard }) {
   const { prompt } = useDialog();
   const [decks, setDecks] = useState([]);
   const [allCards, setAllCards] = useState([]);
@@ -48,7 +48,8 @@ export default function StudyMode({ filterCards, initialDeckId, onGoToDashboard 
         const count = savedCards.filter(c => c.deckId === initialDeckId).length;
         setCurrentIndex(0);
         setSelectedDeckId(initialDeckId);
-        setIsFinished(count === 0);
+        setStudyLimit(initialLimit);
+        setIsFinished(count === 0 || (initialLimit === 0));
       } else if (savedDecks.length === 1 && !filterCards) {
         const deck = savedDecks[0];
         const count = savedCards.filter(c => c.deckId === deck.id).length;

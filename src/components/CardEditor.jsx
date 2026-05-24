@@ -8,6 +8,7 @@ export default function CardEditor({ onStudyDeck }) {
   const [decks, setDecks] = useState([]);
   const [cards, setCards] = useState([]);
   const [selectedDeckId, setSelectedDeckId] = useState(null);
+  const [studyLimits, setStudyLimits] = useState({});
   
   // Bulk upload state
   const [bulkItems, setBulkItems] = useState([]);
@@ -257,7 +258,24 @@ export default function CardEditor({ onStudyDeck }) {
                     </div>
                   </div>
                   
-                  <div className="flex space-x-3 mt-6">
+                  {deckCards.length > 0 && (
+                     <div className="mt-3 flex items-center justify-between text-sm bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <span className="text-slate-600 font-medium text-xs">Số câu:</span>
+                        <div className="flex items-center space-x-1">
+                          <input 
+                             type="number"
+                             min="1"
+                             max={deckCards.length}
+                             value={studyLimits[deck.id] || deckCards.length}
+                             onChange={(e) => setStudyLimits(prev => ({...prev, [deck.id]: e.target.value}))}
+                             className="w-14 rounded border border-slate-200 px-1 py-1 text-center bg-white outline-none focus:border-indigo-500 font-medium"
+                          />
+                          <span className="text-slate-400 font-medium">/ {deckCards.length}</span>
+                        </div>
+                     </div>
+                  )}
+
+                  <div className="flex space-x-3 mt-4">
                     <button
                       onClick={() => setSelectedDeckId(deck.id)}
                       className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
@@ -266,7 +284,10 @@ export default function CardEditor({ onStudyDeck }) {
                     </button>
                     {deckCards.length > 0 && (
                       <button
-                        onClick={() => onStudyDeck(deck.id)}
+                        onClick={() => {
+                          const limit = studyLimits[deck.id] ? parseInt(studyLimits[deck.id], 10) : deckCards.length;
+                          onStudyDeck(deck.id, limit);
+                        }}
                         className="flex-1 bg-indigo-50 text-indigo-600 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition-colors flex items-center justify-center"
                       >
                         <Play className="w-4 h-4 mr-1" /> Học
@@ -308,13 +329,32 @@ export default function CardEditor({ onStudyDeck }) {
           Bộ: <span className="text-indigo-600">{currentDeck?.name}</span>
         </h2>
         {deckCards.length > 0 && (
-          <button
-            onClick={() => onStudyDeck(selectedDeckId)}
-            className="inline-flex items-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
-          >
-            <Play className="w-4 h-4 mr-2" />
-            Học ngay
-          </button>
+          <div className="flex items-center space-x-3 flex-wrap sm:flex-nowrap gap-y-2">
+             <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm">
+                <label className="text-sm text-slate-600 font-medium">Số câu:</label>
+                <div className="flex items-center space-x-1">
+                  <input 
+                     type="number"
+                     min="1"
+                     max={deckCards.length}
+                     value={studyLimits[selectedDeckId] || deckCards.length}
+                     onChange={(e) => setStudyLimits(prev => ({...prev, [selectedDeckId]: e.target.value}))}
+                     className="w-14 rounded text-center text-sm border border-slate-200 py-1 outline-none focus:border-indigo-500 font-medium"
+                  />
+                  <span className="text-slate-400 text-sm font-medium">/ {deckCards.length}</span>
+                </div>
+             </div>
+             <button
+               onClick={() => {
+                 const limit = studyLimits[selectedDeckId] ? parseInt(studyLimits[selectedDeckId], 10) : deckCards.length;
+                 onStudyDeck(selectedDeckId, limit);
+               }}
+               className="inline-flex items-center rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors"
+             >
+               <Play className="w-4 h-4 mr-2" />
+               Học ngay
+             </button>
+          </div>
         )}
       </div>
 
