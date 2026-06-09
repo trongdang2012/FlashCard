@@ -6,3 +6,19 @@ body {
   background-color: #f8fafc;
   color: #0f172a;
 }
+
+/* 3D Flip Card */
+.perspective-1000 {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.rotate-x-180 {
+  transform: rotateX(180deg);
+}
+

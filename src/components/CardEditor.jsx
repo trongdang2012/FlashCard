@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ImagePlus, Trash2, Edit2, Save, Plus, Folder, ChevronLeft, Play, LayoutGrid, Download, Upload, Type } from 'lucide-react';
+import { ImagePlus, Trash2, Edit2, Save, Plus, Folder, ChevronLeft, Play, LayoutGrid, Download, Upload, Type, Shuffle, Layers, X } from 'lucide-react';
 import { get, set } from 'idb-keyval';
 import { useDialog } from './DialogContext';
 
@@ -12,6 +12,10 @@ export default function CardEditor({ onStudyDeck }) {
   
   // Bulk upload state
   const [bulkItems, setBulkItems] = useState([]);
+
+  // Split deck state
+  const [splitModal, setSplitModal] = useState(null); // { deckId, deckName, totalCards }
+  const [splitParts, setSplitParts] = useState(3);
 
   // Text card state
   const [textQuestion, setTextQuestion] = useState('');
@@ -39,13 +43,87 @@ export default function CardEditor({ onStudyDeck }) {
 
   const handleDeleteDeck = async (id) => {
     if (await confirm('Bạn có chắc muốn xóa bộ thẻ này và toàn bộ thẻ bên trong?')) {
-      const updatedDecks = decks.filter(d => d.id !== id);
-      const updatedCards = cards.filter(c => c.deckId !== id);
+      const deck = decks.find(d => d.id === id);
+      // Xóa cả các bộ con nếu đây là bộ cha
+      let idsToDelete = [id];
+      if (deck?.subDeckIds?.length) {
+        idsToDelete = [...idsToDelete, ...deck.subDeckIds];
+      }
+      const updatedDecks = decks.filter(d => !idsToDelete.includes(d.id));
+      const updatedCards = cards.filter(c => !idsToDelete.includes(c.deckId));
       await set('microdecks', updatedDecks);
       await set('microcards', updatedCards);
       setDecks(updatedDecks);
       setCards(updatedCards);
     }
+  };
+
+  // Chia bộ thẻ thành N phần ngẫu nhiên không trùng lặp
+  const handleSplitDeck = async (sourceDeckId, numParts) => {
+    const sourceDeck = decks.find(d => d.id === sourceDeckId);
+    const sourceCards = cards.filter(c => c.deckId === sourceDeckId);
+
+    if (!sourceDeck || sourceCards.length === 0) return;
+    if (numParts < 2 || numParts > sourceCards.length) {
+      await alert(`Số phần phải từ 2 đến ${sourceCards.length}.`);
+      return;
+    }
+
+    // Xóa các bộ con cũ nếu đã chia trước đó
+    let allDecks = [...decks];
+    let allCards = [...cards];
+    if (sourceDeck.subDeckIds?.length) {
+      allDecks = allDecks.filter(d => !sourceDeck.subDeckIds.includes(d.id));
+      allCards = allCards.filter(c => !sourceDeck.subDeckIds.includes(c.deckId));
+    }
+
+    // Xáo trộn ngẫu nhiên
+    const shuffled = [...sourceCards].sort(() => Math.random() - 0.5);
+    const chunkSize = Math.ceil(shuffled.length / numParts);
+
+    const newSubDecks = [];
+    const newCards = [];
+    const newSubDeckIds = [];
+
+    for (let i = 0; i < numParts; i++) {
+      const chunk = shuffled.slice(i * chunkSize, (i + 1) * chunkSize);
+      if (chunk.length === 0) continue;
+
+      const subDeckId = `${sourceDeckId}_part${i + 1}_${Date.now()}`;
+      newSubDeckIds.push(subDeckId);
+
+      newSubDecks.push({
+        id: subDeckId,
+        name: `${sourceDeck.name} — Phần ${i + 1}`,
+        lastStudiedIndex: 0,
+        isCompleted: false,
+        parentDeckId: sourceDeckId,
+        partNumber: i + 1,
+        totalParts: numParts,
+      });
+
+      chunk.forEach(card => {
+        newCards.push({
+          ...card,
+          id: `${card.id}_p${i + 1}_${Date.now() + Math.random()}`,
+          deckId: subDeckId,
+          stats: { correct: 0, wrong: 0 }, // stats mới cho bộ con
+        });
+      });
+    }
+
+    // Cập nhật bộ cha với danh sách subDeckIds
+    const updatedDecks = allDecks.map(d =>
+      d.id === sourceDeckId ? { ...d, subDeckIds: newSubDeckIds } : d
+    );
+    const finalDecks = [...updatedDecks, ...newSubDecks];
+    const finalCards = [...allCards, ...newCards];
+
+    await set('microdecks', finalDecks);
+    await set('microcards', finalCards);
+    setDecks(finalDecks);
+    setCards(finalCards);
+    setSplitModal(null);
   };
 
   // Nạp ảnh nguyên bản (không nén)
@@ -243,39 +321,76 @@ export default function CardEditor({ onStudyDeck }) {
             <p className="text-slate-500 text-lg">Chưa có bộ thẻ nào.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {decks.map(deck => {
               const deckCards = cards.filter(c => c.deckId === deck.id);
+              const isSubDeck = !!deck.parentDeckId;
+              const hasSubDecks = deck.subDeckIds?.length > 0;
+              const subDecksOfThis = decks.filter(d => d.parentDeckId === deck.id);
+
               return (
-                <div key={deck.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 hover:shadow-md transition-all group relative overflow-hidden">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-slate-800 truncate pr-4" title={deck.name}>{deck.name}</h3>
-                      <p className="text-sm text-slate-500 mt-1">{deckCards.length} thẻ</p>
+                <div
+                  key={deck.id}
+                  className={`bg-white rounded-2xl shadow-sm border p-6 hover:shadow-md transition-all group relative overflow-hidden ${
+                    isSubDeck
+                      ? 'border-indigo-100 bg-gradient-to-br from-white to-indigo-50/40'
+                      : 'border-slate-100'
+                  }`}
+                >
+                  {/* Badge bộ con */}
+                  {isSubDeck && (
+                    <div className="absolute top-3 left-3">
+                      <span className="text-[10px] font-bold bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                        Phần {deck.partNumber}/{deck.totalParts}
+                      </span>
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0">
-                      <Folder className="w-5 h-5 text-indigo-500" />
-                    </div>
-                  </div>
-                  
-                  {deckCards.length > 0 && (
-                     <div className="mt-3 flex items-center justify-between text-sm bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        <span className="text-slate-600 font-medium text-xs">Số câu:</span>
-                        <div className="flex items-center space-x-1">
-                          <input 
-                             type="number"
-                             min="1"
-                             max={deckCards.length}
-                             value={studyLimits[deck.id] || deckCards.length}
-                             onChange={(e) => setStudyLimits(prev => ({...prev, [deck.id]: e.target.value}))}
-                             className="w-14 rounded border border-slate-200 px-1 py-1 text-center bg-white outline-none focus:border-indigo-500 font-medium"
-                          />
-                          <span className="text-slate-400 font-medium">/ {deckCards.length}</span>
-                        </div>
-                     </div>
                   )}
 
-                  <div className="flex space-x-3 mt-4">
+                  <div className="flex justify-between items-start mb-4" style={{ marginTop: isSubDeck ? '16px' : '0' }}>
+                    <div className="flex-1">
+                      <h3 className="text-base font-bold text-slate-800 leading-snug line-clamp-2" title={deck.name}>{deck.name}</h3>
+                      <p className="text-sm text-slate-500 mt-1">{deckCards.length} thẻ</p>
+                    </div>
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isSubDeck ? 'bg-indigo-100' : 'bg-indigo-50'
+                    }`}>
+                      {isSubDeck
+                        ? <Layers className="w-5 h-5 text-indigo-600" />
+                        : <Folder className="w-5 h-5 text-indigo-500" />
+                      }
+                    </div>
+                  </div>
+
+                  {/* Hiển thị bộ con đã chia */}
+                  {hasSubDecks && (
+                    <div className="mb-3 flex flex-wrap gap-1">
+                      {subDecksOfThis.map(sd => (
+                        <span key={sd.id} className="text-[10px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200 px-2 py-0.5 rounded-full">
+                          Phần {sd.partNumber}: {cards.filter(c => c.deckId === sd.id).length} câu
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {deckCards.length > 0 && (
+                    <div className="mt-2 mb-1 flex items-center justify-between text-sm bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      <span className="text-slate-600 font-medium text-xs">Số câu muốn học:</span>
+                      <div className="flex items-center space-x-1">
+                        <input
+                          type="number"
+                          min="1"
+                          max={deckCards.length}
+                          value={studyLimits[deck.id] || deckCards.length}
+                          onChange={(e) => setStudyLimits(prev => ({ ...prev, [deck.id]: e.target.value }))}
+                          className="w-14 rounded border border-slate-200 px-1 py-1 text-center bg-white outline-none focus:border-indigo-500 font-medium"
+                        />
+                        <span className="text-slate-400 font-medium">/ {deckCards.length}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex space-x-2 mt-4">
                     <button
                       onClick={() => setSelectedDeckId(deck.id)}
                       className="flex-1 bg-slate-100 text-slate-700 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 transition-colors"
@@ -295,6 +410,20 @@ export default function CardEditor({ onStudyDeck }) {
                     )}
                   </div>
 
+                  {/* Nút chia bộ (chỉ cho bộ cha >= 4 thẻ) */}
+                  {!isSubDeck && deckCards.length >= 4 && (
+                    <button
+                      onClick={() => {
+                        setSplitParts(3);
+                        setSplitModal({ deckId: deck.id, deckName: deck.name, totalCards: deckCards.length });
+                      }}
+                      className="mt-2 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                    >
+                      <Shuffle className="w-3.5 h-3.5" />
+                      {hasSubDecks ? 'Tráo lại & chia lại' : 'Chia thành nhiều bộ nhỏ'}
+                    </button>
+                  )}
+
                   <button
                     onClick={() => handleDeleteDeck(deck.id)}
                     className="absolute top-4 right-4 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 rounded-full p-1"
@@ -306,6 +435,105 @@ export default function CardEditor({ onStudyDeck }) {
               );
             })}
           </div>
+
+          {/* Modal chia bộ thẻ */}
+          {splitModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+              <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4 animate-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                      <Shuffle className="w-5 h-5 text-emerald-600" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800">Chia bộ thẻ</h3>
+                  </div>
+                  <button onClick={() => setSplitModal(null)} className="text-slate-400 hover:text-slate-600">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <p className="text-slate-600 mb-1">
+                  Bộ <strong className="text-slate-800">{splitModal.deckName}</strong>
+                </p>
+                <p className="text-sm text-slate-500 mb-6">
+                  Tổng {splitModal.totalCards} câu hỏi sẽ được xáo trộn ngẫu nhiên và chia đều vào các bộ nhỏ.
+                  Mỗi câu chỉ xuất hiện trong 1 bộ nhỏ duy nhất.
+                </p>
+
+                <div className="mb-6">
+                  <label className="text-sm font-semibold text-slate-700 block mb-3">Số bộ nhỏ muốn chia:</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min={2}
+                      max={Math.min(splitModal.totalCards, 10)}
+                      value={splitParts}
+                      onChange={e => setSplitParts(Math.max(2, Math.min(10, parseInt(e.target.value) || 2)))}
+                      className="w-20 text-center border-2 border-slate-200 rounded-xl py-3 text-xl font-bold outline-none focus:border-emerald-500 transition-colors"
+                    />
+                    <div className="flex-1">
+                      <div className="flex gap-2">
+                        {[2, 3, 4, 5].filter(n => n <= splitModal.totalCards).map(n => (
+                          <button
+                            key={n}
+                            onClick={() => setSplitParts(n)}
+                            className={`flex-1 py-2 rounded-lg text-sm font-bold border-2 transition-colors ${
+                              splitParts === n
+                                ? 'bg-emerald-500 text-white border-emerald-500'
+                                : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'
+                            }`}
+                          >
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Preview phân phối */}
+                  <div className="mt-4 bg-slate-50 rounded-xl p-4 border border-slate-100">
+                    <p className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Xem trước phân phối:</p>
+                    <div className="space-y-1.5">
+                      {Array.from({ length: splitParts }, (_, i) => {
+                        const chunkSize = Math.ceil(splitModal.totalCards / splitParts);
+                        const start = i * chunkSize;
+                        const count = Math.min(chunkSize, splitModal.totalCards - start);
+                        return count > 0 ? (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-emerald-700 w-16">Phần {i + 1}:</span>
+                            <div className="flex-1 bg-emerald-100 rounded-full h-2">
+                              <div
+                                className="bg-emerald-500 rounded-full h-2"
+                                style={{ width: `${(count / splitModal.totalCards) * 100}%` }}
+                              />
+                            </div>
+                            <span className="text-xs font-semibold text-slate-600 w-12 text-right">{count} câu</span>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setSplitModal(null)}
+                    className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold hover:bg-slate-50 transition-colors"
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    onClick={() => handleSplitDeck(splitModal.deckId, splitParts)}
+                    className="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-500 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <Shuffle className="w-4 h-4" />
+                    Xáo & Chia ngay
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          </>
         )}
       </div>
     );

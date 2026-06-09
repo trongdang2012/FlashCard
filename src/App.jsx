@@ -4,6 +4,7 @@ import CardEditor from './components/CardEditor';
 import StudyMode from './components/StudyMode';
 import Dashboard from './components/Dashboard';
 import { LayoutDashboard, Edit, BookOpen } from 'lucide-react';
+import importedQuestionsData from './assets/imported_questions.json';
 
 function App() {
   const [activeTab, setActiveTab] = useState('editor'); // 'editor', 'study', 'dashboard'
@@ -12,7 +13,7 @@ function App() {
   const [studyLimit, setStudyLimit] = useState(null);
   const [isReady, setIsReady] = useState(false);
 
-  // Migration logic from localStorage to IndexedDB
+  // Migration logic from localStorage to IndexedDB + Auto-import bundled questions
   useEffect(() => {
     const migrateData = async () => {
       let idbDecks = await get('microdecks');
@@ -36,6 +37,41 @@ function App() {
 
       if (!idbDecks) await set('microdecks', []);
       if (!idbCards) await set('microcards', []);
+
+      // Auto-import bộ thẻ câu hỏi từ file JSON (nếu chưa có)
+      if (importedQuestionsData && importedQuestionsData.decks && importedQuestionsData.cards) {
+        const currentDecks = (await get('microdecks')) || [];
+        const currentCards = (await get('microcards')) || [];
+
+        // Kiểm tra từng deck trong file import, chỉ thêm nếu chưa tồn tại
+        const newDecks = [...currentDecks];
+        const newCards = [...currentCards];
+        let hasChanges = false;
+
+        importedQuestionsData.decks.forEach(deck => {
+          if (!newDecks.find(d => d.id === deck.id)) {
+            newDecks.push(deck);
+            hasChanges = true;
+          }
+        });
+
+        if (hasChanges) {
+          // Chỉ thêm cards của deck mới
+          const addedDeckIds = importedQuestionsData.decks
+            .filter(d => !currentDecks.find(cd => cd.id === d.id))
+            .map(d => d.id);
+
+          importedQuestionsData.cards.forEach(card => {
+            if (addedDeckIds.includes(card.deckId) && !newCards.find(c => c.id === card.id)) {
+              newCards.push(card);
+            }
+          });
+
+          await set('microdecks', newDecks);
+          await set('microcards', newCards);
+          console.log(`Đã tự động import ${importedQuestionsData.cards.length} câu hỏi từ bộ đề tích hợp sẵn.`);
+        }
+      }
 
       setIsReady(true);
     };
